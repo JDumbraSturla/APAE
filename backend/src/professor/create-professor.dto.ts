@@ -74,4 +74,10 @@ export class CreateProfessorDto {
 
   @IsOptional()
   readonly atividadeID: number;
+  
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(4)
+  @MaxLength(200)
+  readonly senha: string;
 }

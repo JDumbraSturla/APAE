@@ -63,4 +63,7 @@ export class Professor {
 
   @OneToMany(() => Atividade, (atividade) => atividade.professor)
   atividade: Atividade[];
+
+  @Column({ nullable: false })
+  senha: string;
 }

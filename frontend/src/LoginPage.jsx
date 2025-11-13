@@ -71,7 +71,7 @@ const LoginPage = ({ onLogin, onGoToRegister, onGoBack }) => {
     setError('');
     setIsLoading(true);
     try {
-      const user = await dataService.login(email, password);
+      const user = await dataService.loginProfessor(email, password);
       onLogin(user);
     } catch (error) {
       setError('Não conseguimos fazer seu login. ' + error.message);

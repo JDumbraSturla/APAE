@@ -38,4 +38,10 @@ export class ProfessorService {
             throw new HttpException('erro ao remover professor', HttpStatus.INTERNAL_SERVER_ERROR);
         
         }
-    }}
+    }
+    async validateProfessor(email: string, senha: string) {
+    // Para teste, compara senha em texto puro
+    const professor = await this.userRepository.findOne({ where: { email, senha } });
+    return professor || null;
+}
+}

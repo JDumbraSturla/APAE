@@ -1,4 +1,136 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from "axios";
+
+const API_BASE_URL = "http://192.168.15.7:3000";
+
+// Cria instância do Axios configurada
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 8000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+class DataService {
+  // ============ PROFESSOR ============
+  async registerProfessor(data) {
+    try {
+      const response = await api.post("/professor", data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao registrar professor:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || "Falha no registro do professor");
+    }
+  }
+
+  async loginProfessor(email, senha) {
+    try {
+      const response = await api.post("/professor/login", { email, senha });
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || "Falha no login");
+    }
+  }
+
+  async getProfessores() {
+    const response = await api.get("/professor");
+    return response.data;
+  }
+
+  async getProfessorById(id) {
+    const response = await api.get(`/professor/${id}`);
+    return response.data;
+  }
+
+  async updateProfessor(id, data) {
+    const response = await api.put(`/professor/${id}`, data);
+    return response.data;
+  }
+
+  async deleteProfessor(id) {
+    await api.delete(`/professor/${id}`);
+  }
+
+  // ============ RESPONSÁVEL ============
+  async registerResponsavel(data) {
+    const response = await api.post("/responsavel", data);
+    return response.data;
+  }
+
+  async getResponsaveis() {
+    const response = await api.get("/responsavel");
+    return response.data;
+  }
+
+  async getResponsavelById(id) {
+    const response = await api.get(`/responsavel/${id}`);
+    return response.data;
+  }
+
+  async updateResponsavel(id, data) {
+    const response = await api.put(`/responsavel/${id}`, data);
+    return response.data;
+  }
+
+  async deleteResponsavel(id) {
+    await api.delete(`/responsavel/${id}`);
+  }
+
+  // ============ ALUNO ============
+  async getAlunos() {
+    const response = await api.get("/aluno");
+    return response.data;
+  }
+
+  async getAlunoById(id) {
+    const response = await api.get(`/aluno/${id}`);
+    return response.data;
+  }
+
+  async registerAluno(data) {
+    const response = await api.post("/aluno", data);
+    return response.data;
+  }
+
+  async updateAluno(id, data) {
+    const response = await api.put(`/aluno/${id}`, data);
+    return response.data;
+  }
+
+  async deleteAluno(id) {
+    await api.delete(`/aluno/${id}`);
+  }
+
+  // ============ ATIVIDADE ============
+  async getAtividades() {
+    const response = await api.get("/atividade");
+    return response.data;
+  }
+
+  async getAtividadeById(id) {
+    const response = await api.get(`/atividade/${id}`);
+    return response.data;
+  }
+
+  async registerAtividade(data) {
+    const response = await api.post("/atividade", data);
+    return response.data;
+  }
+
+  async updateAtividade(id, data) {
+    const response = await api.put(`/atividade/${id}`, data);
+    return response.data;
+  }
+
+  async deleteAtividade(id) {
+    await api.delete(`/atividade/${id}`);
+  }
+}
+
+export const dataService = new DataService();
+
+/*import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class DataService {
   constructor() {
@@ -108,4 +240,4 @@ class DataService {
   }
 }
 
-export const dataService = new DataService();
+export const dataService = new DataService();*/

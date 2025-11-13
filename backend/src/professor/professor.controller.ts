@@ -32,4 +32,13 @@ export class ProfessorController {
         deleteProfessor(@Param('id') id: number){
             return this.professorService.deleteProfessor(+id);
         }
+
+        @Post('login')
+        async login(@Body() body: { email: string; senha: string }) {
+        const professor = await this.professorService.validateProfessor(body.email, body.senha);
+        if (!professor) {
+            return { success: false, message: 'Credenciais inválidas' };
+        }
+        return { success: true, professor };
+    }
 }
