@@ -35,8 +35,6 @@ export class CreateAtividadeDto {
   readonly hora: string;
 
   @IsNotEmpty()
-  readonly professorID: number;
-
-  @IsNotEmpty()
-  readonly alunoID: number;
+  readonly professorId: number;
 }
+

@@ -1,205 +1,126 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { dataService } from './dataService';
-import { useTheme } from './contexts/ThemeContext';
-import { designTokens } from './theme/tokens';
-import LoadingSpinner from './components/LoadingSpinner';
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { designTokens } from "./theme/tokens";
+import { dataService } from "./dataService";
 
+const ProfilePage = ({ onLogout, onGoBack }) => {
+  const [professor, setProfessor] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-const ProfilePage = ({ user }) => {
+  // 🔥 Carrega o usuário salvo no AsyncStorage
+  useEffect(() => {
+    loadProfessor();
+  }, []);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    photo: user?.photo || '',
-  });
-
-  const { theme, isDark } = useTheme();
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'Images',
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setFormData({ ...formData, photo: result.assets[0].uri });
-    }
-  };
-
-  const handleSave = async () => {
-    setIsLoading(true);
+  const loadProfessor = async () => {
     try {
-      const updatedUser = { ...user, ...formData };
-      await dataService.updateUser(updatedUser);
-      setIsEditing(false);
-      Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
+      const saved = await dataService.getSavedUser();
+
+      if (saved && saved.id) {
+        setProfessor(saved);
+        setLoading(false);
+        return;
+      }
+
+      console.log("Nenhum usuário salvo encontrado.");
+
     } catch (error) {
-      Alert.alert('Erro', error.message);
-    } finally {
-      setIsLoading(false);
+      console.error("Erro ao carregar professor:", error);
     }
+
+    setLoading(false);
   };
 
-  const getRoleColor = () => {
-    switch (user?.role) {
-      case 'teacher': return designTokens.colors.semantic.info;
-      default: return designTokens.colors.primary[600];
-    }
+  const handleLogout = async () => {
+    await dataService.logout();
+    onLogout();
   };
 
-  const getRoleLabel = () => {
-    switch (user?.role) {
-      case 'teacher': return 'Professor/Terapeuta';
-      default: return 'Aluno';
-    }
-  };
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={designTokens.colors.primary[500]} />
+        <Text style={styles.loadingText}>Carregando perfil...</Text>
+      </View>
+    );
+  }
+
+  if (!professor) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Não foi possível carregar os dados do professor.</Text>
+        <TouchableOpacity onPress={loadProfessor} style={styles.retryButton}>
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <TouchableOpacity style={styles.photoContainer} onPress={isEditing ? pickImage : null}>
-          {formData.photo ? (
-            <Image source={{ uri: formData.photo }} style={styles.profilePhoto} />
-          ) : (
-            <View style={[styles.photoPlaceholder, { backgroundColor: designTokens.colors.neutral[200] }]}>
-              <Ionicons name="person" size={40} color={theme.colors.textSecondary} />
-            </View>
-          )}
-          {isEditing && (
-            <View style={[styles.photoOverlay, { backgroundColor: getRoleColor() }]}>
-              <Ionicons name="camera" size={24} color={theme.colors.textInverse} />
-            </View>
-          )}
+    <ScrollView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onGoBack} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={26} color={designTokens.colors.neutral[700]} />
         </TouchableOpacity>
-        
-        <View style={[styles.roleTag, { backgroundColor: getRoleColor() }]}>
-          <Text style={[styles.roleText, { color: theme.colors.textInverse }]}>{getRoleLabel()}</Text>
+
+        <Text style={styles.headerTitle}>Meu Perfil</Text>
+
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={24} color={designTokens.colors.semantic.error} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Card de Informações */}
+      <View style={styles.profileCard}>
+        <Ionicons name="person-circle-outline" size={90} color={designTokens.colors.primary[500]} />
+
+        <Text style={styles.name}>
+          {professor.nome} {professor.sobrenome}
+        </Text>
+        <Text style={styles.role}>{professor.especialidade}</Text>
+      </View>
+
+      {/* Detalhes */}
+      <View style={styles.infoSection}>
+        <Text style={styles.sectionTitle}>Informações pessoais</Text>
+
+        <View style={styles.infoItem}>
+          <Ionicons name="mail-outline" size={20} color={designTokens.colors.neutral[600]} />
+          <Text style={styles.infoText}>{professor.email}</Text>
+        </View>
+
+        <View style={styles.infoItem}>
+          <Ionicons name="call-outline" size={20} color={designTokens.colors.neutral[600]} />
+          <Text style={styles.infoText}>{professor.telefone || "Não informado"}</Text>
+        </View>
+
+        <View style={styles.infoItem}>
+          <Ionicons name="calendar-outline" size={20} color={designTokens.colors.neutral[600]} />
+          <Text style={styles.infoText}>{professor.data_nascimento}</Text>
+        </View>
+
+        <View style={styles.infoItem}>
+          <Ionicons name="document-text-outline" size={20} color={designTokens.colors.neutral[600]} />
+          <Text style={styles.infoText}>CPF: {professor.cpf}</Text>
+        </View>
+
+        <View style={styles.infoItem}>
+          <Ionicons name="book-outline" size={20} color={designTokens.colors.neutral[600]} />
+          <Text style={styles.infoText}>
+            Disciplinas: {professor.disciplinas || "Nenhuma"}
+          </Text>
         </View>
       </View>
 
-      <View style={[styles.form, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.row}>
-          <View style={styles.halfInput}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Nome</Text>
-            {isEditing ? (
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-                value={formData.firstName}
-                onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-                placeholder="Nome"
-                placeholderTextColor="#9ca3af"
-              />
-            ) : (
-              <Text style={[styles.value, { color: theme.colors.text }]}>{formData.firstName}</Text>
-            )}
-          </View>
-          <View style={styles.halfInput}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Sobrenome</Text>
-            {isEditing ? (
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-                value={formData.lastName}
-                onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-                placeholder="Sobrenome"
-                placeholderTextColor="#9ca3af"
-              />
-            ) : (
-              <Text style={[styles.value, { color: theme.colors.text }]}>{formData.lastName}</Text>
-            )}
-          </View>
+      {/* Admin */}
+      {professor.admin && (
+        <View style={styles.adminTag}>
+          <Ionicons name="shield-checkmark-outline" size={18} color="#fff" />
+          <Text style={styles.adminText}>Administrador</Text>
         </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
-          {isEditing ? (
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholder="Email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor="#9ca3af"
-            />
-          ) : (
-            <Text style={[styles.value, { color: theme.colors.text }]}>{formData.email}</Text>
-          )}
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Telefone</Text>
-          {isEditing ? (
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
-              value={formData.phone}
-              onChangeText={(text) => setFormData({ ...formData, phone: text })}
-              placeholder="Telefone"
-              keyboardType="phone-pad"
-              placeholderTextColor="#9ca3af"
-            />
-          ) : (
-            <Text style={[styles.value, { color: theme.colors.text }]}>{formData.phone || 'Não informado'}</Text>
-          )}
-        </View>
-
-        {user?.role === 'student' && (
-          <>
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>CPF</Text>
-              <Text style={[styles.value, { color: theme.colors.text }]}>{user?.cpf || 'Não informado'}</Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>RA</Text>
-              <Text style={[styles.value, { color: theme.colors.text }]}>{user?.ra || 'Não informado'}</Text>
-            </View>
-          </>
-        )}
-      </View>
-
-      <View style={styles.actions}>
-        {isEditing ? (
-          <View style={styles.editActions}>
-            <TouchableOpacity
-              style={[styles.cancelButton]}
-              onPress={() => {
-                setIsEditing(false);
-                setFormData({
-                  firstName: user?.firstName || '',
-                  lastName: user?.lastName || '',
-                  email: user?.email || '',
-                  phone: user?.phone || '',
-                  photo: user?.photo || '',
-                });
-              }}
-            >
-              <Text style={[styles.cancelButtonText, { color: theme.colors.textInverse }]}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: getRoleColor() }, isLoading && styles.disabledButton]}
-              onPress={handleSave}
-              disabled={isLoading}
-            >
-              {isLoading && <LoadingSpinner size="sm" color={theme.colors.textInverse} />}
-              <Text style={[styles.saveButtonText, { color: theme.colors.textInverse }]}>
-                {isLoading ? 'Salvando...' : 'Salvar'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={[styles.editButton, { backgroundColor: getRoleColor() }]} onPress={() => setIsEditing(true)}>
-            <Ionicons name="pencil" size={20} color={theme.colors.textInverse} />
-            <Text style={[styles.editButtonText, { color: theme.colors.textInverse }]}>Editar Perfil</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      )}
     </ScrollView>
   );
 };
@@ -207,140 +128,99 @@ const ProfilePage = ({ user }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor will be set dynamically
+    padding: designTokens.spacing.lg,
+    backgroundColor: "#fff",
   },
+
   header: {
-    // backgroundColor will be set dynamically from theme.colors.surface
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 32,
-    paddingHorizontal: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: designTokens.spacing.xl,
   },
-  photoContainer: {
-    position: 'relative',
-    marginBottom: 16,
+  backButton: { padding: 4 },
+  headerTitle: {
+    fontSize: designTokens.typography.fontSizes["2xl"],
+    fontWeight: "700",
+    color: designTokens.colors.neutral[900],
   },
-  profilePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  logoutButton: { padding: 4 },
+
+  profileCard: {
+    alignItems: "center",
+    paddingVertical: designTokens.spacing.xl,
+    backgroundColor: designTokens.colors.neutral[50],
+    borderRadius: designTokens.borderRadius["2xl"],
+    marginBottom: designTokens.spacing.xl,
   },
-  photoPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    // backgroundColor will be set dynamically
-    justifyContent: 'center',
-    alignItems: 'center',
+  name: {
+    fontSize: designTokens.typography.fontSizes["2xl"],
+    fontWeight: "700",
+    color: designTokens.colors.neutral[900],
+    marginTop: designTokens.spacing.md,
   },
-  photoOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    // backgroundColor will be set dynamically
-    borderRadius: 16,
-    padding: 8,
+  role: {
+    fontSize: designTokens.typography.fontSizes.md,
+    color: designTokens.colors.neutral[600],
+    marginTop: 4,
   },
-  roleTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+
+  infoSection: {
+    padding: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.neutral[50],
+    borderRadius: designTokens.borderRadius.xl,
   },
-  roleText: {
+  sectionTitle: {
+    fontSize: designTokens.typography.fontSizes.lg,
+    fontWeight: "600",
+    marginBottom: designTokens.spacing.md,
+  },
+
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: designTokens.spacing.sm,
+  },
+  infoText: {
+    marginLeft: designTokens.spacing.sm,
+    fontSize: designTokens.typography.fontSizes.md,
+    color: designTokens.colors.neutral[700],
+  },
+
+  adminTag: {
+    marginTop: designTokens.spacing.xl,
+    padding: designTokens.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: designTokens.colors.primary[600],
+    borderRadius: designTokens.borderRadius.xl,
+  },
+  adminText: {
+    marginLeft: 6,
+    color: "#fff",
+    fontWeight: "600",
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: { marginTop: 10, color: designTokens.colors.neutral[600] },
+
+  errorContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  errorText: {
     fontSize: 16,
-    // color will be set dynamically
-    fontWeight: '600',
+    color: designTokens.colors.semantic.error,
+    marginBottom: 10,
   },
-  form: {
-    // backgroundColor will be set dynamically
-    margin: 16,
-    borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  halfInput: {
-    flex: 0.48,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    // color will be set dynamically
-    marginBottom: 8,
-  },
-  input: {
-    // backgroundColor, borderColor, color will be set dynamically
-    borderRadius: 8,
+  retryButton: {
     padding: 12,
-    borderWidth: 1,
-    fontSize: 16,
+    backgroundColor: designTokens.colors.primary[500],
+    borderRadius: 10,
   },
-  value: {
-    fontSize: 16,
-    // color will be set dynamically
-    paddingVertical: 8,
-  },
-  actions: {
-    padding: 16,
-  },
-  editActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  editButton: {
-    // backgroundColor will be set dynamically
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 8,
-  },
-  editButtonText: {
-    fontSize: 16,
-    // color will be set dynamically
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  cancelButton: {
-    backgroundColor: designTokens.colors.neutral[500], // Using a neutral color from designTokens
-    flex: 0.45,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    // color will be set dynamically
-    fontWeight: '600',
-  },
-  saveButton: {
-    // backgroundColor will be set dynamically
-    flex: 0.45,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    // color will be set dynamically
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
+  retryText: { color: "#fff", fontWeight: "600" },
 });
 
 export default ProfilePage;

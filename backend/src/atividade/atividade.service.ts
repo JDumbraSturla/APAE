@@ -4,37 +4,129 @@ import { Repository } from 'typeorm';
 import { Atividade } from './atividade.entity';
 import { CreateAtividadeDto } from './create-atividade.dto';
 import { UpdateAtividadeDto } from './update-atividade.dto';
+import { Aluno } from 'src/aluno/aluno.entity';
 
 @Injectable()
-export class AtividadeService {constructor(
+export class AtividadeService {
+  constructor(
     @InjectRepository(Atividade)
-    private userRepository: Repository<Atividade>,
+    private atividadeRepository: Repository<Atividade>,
+
+    @InjectRepository(Aluno)
+    private alunoRepository: Repository<Aluno>,
   ) {}
-    createAtividade(createAtividadeDto : CreateAtividadeDto): Promise<Atividade> {
-        const newAtividade = this.userRepository.create(createAtividadeDto);//trocar para alunoRepository quando ficar pronto o banco
-        return this.userRepository.save(newAtividade);
+
+  // Criar atividade
+  async createAtividade(dto: CreateAtividadeDto): Promise<Atividade> {
+    const atividade = this.atividadeRepository.create({
+      titulo: dto.titulo,
+      descricao: dto.descricao,
+      data: dto.data,
+      hora: dto.hora,
+      professor: { id: dto.professorId },
+    });
+
+    return this.atividadeRepository.save(atividade);
+  }
+
+  // Listar atividades com tratamento seguro de relações
+  async getAtividades(): Promise<Atividade[]> {
+    try {
+      const atividades = await this.atividadeRepository.find({
+        relations: ['professor', 'alunos'],
+      });
+
+      // Garante que cada atividade tenha professor e alunos definidos
+      return atividades.map((a) => ({
+        ...a,
+        professor: a.professor || null,
+        alunos: a.aluno || [],
+      }));
+    } catch (err) {
+      throw new HttpException(
+        'Erro ao buscar atividades',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Buscar 1 atividade
+  async getAtividade(id: number): Promise<Atividade> {
+    try {
+      const atividade = await this.atividadeRepository.findOne({
+        where: { id },
+        relations: ['professor', 'alunos'],
+      });
+
+      if (!atividade) {
+        throw new HttpException('Atividade não encontrada', HttpStatus.NOT_FOUND);
+      }
+
+      return {
+        ...atividade,
+        professor: atividade.professor || null,
+        aluno: atividade.aluno || [],
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        'Erro ao buscar atividade',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Atualizar atividade
+  async updateAtividade(id: number, dto: UpdateAtividadeDto): Promise<Atividade> {
+    await this.atividadeRepository.update(id, dto);
+    return this.getAtividade(id);
+  }
+
+  // Deletar atividade
+  async deleteAtividade(id: number): Promise<{ message: string }> {
+    try {
+      const result = await this.atividadeRepository.delete(id);
+      if (result.affected === 0) {
+        throw new HttpException('Atividade não encontrada', HttpStatus.NOT_FOUND);
+      }
+      return { message: 'Atividade removida com sucesso' };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        'Erro ao remover atividade',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Associar aluno à atividade (pivot)
+  async assignAluno(atividadeId: number, alunoId: number): Promise<Atividade> {
+    const atividade = await this.atividadeRepository.findOne({
+      where: { id: atividadeId },
+      relations: ['alunos'],
+    });
+
+    if (!atividade) {
+      throw new HttpException('Atividade não encontrada', HttpStatus.NOT_FOUND);
     }
 
-    getAtividades(){
-        return this.userRepository.find();//trocar para alunoRepository quando ficar pronto o banco
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+    });
+
+    if (!aluno) {
+      throw new HttpException('Aluno não encontrado', HttpStatus.NOT_FOUND);
     }
 
-    getAtividade(id: number){
-        return this.userRepository.findOne({where:{id: id}});//trocar para alunoRepository quando ficar pronto o banco
+    // Inicializa array caso esteja undefined
+    if (!atividade.aluno) atividade.aluno = [];
+    
+    // Evita duplicação
+    const existe = atividade.aluno.find(a => a.id === aluno.id);
+    if (!existe) {
+      atividade.aluno.push(aluno);
     }
 
-    updateAtividade(id: number, updatesAtividadeDto: UpdateAtividadeDto){
-        return this.userRepository.update(id, updatesAtividadeDto);
-    }
-
-    deleteAtividade(id: number){
-        try{
-            this.userRepository.delete(id);//trocar para alunoRepository quando ficar pronto o banco
-            return {message: 'atividade removida com sucesso'};
-        }
-        catch (error){
-            console.error(error);
-            throw new HttpException('erro ao remover atividade', HttpStatus.INTERNAL_SERVER_ERROR);
-        
-        }
-    }}
+    return this.atividadeRepository.save(atividade);
+  }
+}

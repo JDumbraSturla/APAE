@@ -6,9 +6,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: 'http://localhost:4000',
+    origin: '*', // libera para o celular/emulador
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+    credentials: false,
   });
 
   app.useGlobalPipes(
@@ -21,7 +21,9 @@ async function bootstrap() {
       },
     }),
   );
-  
-  await app.listen(process.env.PORT ?? 3000);
+
+  // O ponto chave: permitir acesso via rede local
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
+
 bootstrap();
