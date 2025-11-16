@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 class DataService {
   constructor() {
     this.storageKey = 'apae_users';
+    this.activitiesKey = 'apae_activities';
     this.currentUserKey = 'apae_current_user';
   }
 
@@ -105,6 +106,83 @@ class DataService {
     }
     
     throw new Error('Usuário não encontrado');
+  }
+
+  // --- Métodos para Atividades ---
+
+  async getActivities() {
+    try {
+      const activities = await AsyncStorage.getItem(this.activitiesKey);
+      return activities ? JSON.parse(activities) : [];
+    } catch (error) {
+      console.error('Error getting activities:', error);
+      return [];
+    }
+  }
+
+  async getActivitiesForUser(userId, userRole) {
+    const allActivities = await this.getActivities();
+    const allUsers = await this.getUsers();
+
+    if (userRole === 'teacher') {
+      // Para professores, retorna atividades que eles criaram
+      return allActivities
+        .filter(act => act.teacherId === userId)
+        .map(act => {
+          const student = allUsers.find(u => u.id === act.studentId);
+          return { ...act, studentName: student ? student.name : 'Aluno não encontrado' };
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Mais recentes primeiro
+    } else {
+      // Para alunos, retorna atividades atribuídas a eles
+      return allActivities
+        .filter(act => act.studentId === userId)
+        .map(act => {
+          const teacher = allUsers.find(u => u.id === act.teacherId);
+          return { ...act, teacherName: teacher ? teacher.name : 'Professor não encontrado' };
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+  }
+
+  async getActivityById(activityId) {
+    const allActivities = await this.getActivities();
+    const activity = allActivities.find(act => act.id === activityId);
+    if (!activity) {
+      return null;
+    }
+    // Adiciona os nomes para exibição
+    const allUsers = await this.getUsers();
+    const student = allUsers.find(u => u.id === activity.studentId);
+    const teacher = allUsers.find(u => u.id === activity.teacherId);
+    return {
+      ...activity,
+      studentName: student ? student.name : 'Aluno não encontrado',
+      teacherName: teacher ? teacher.name : 'Professor não encontrado',
+    };
+  }
+
+  async createActivity(activityData) {
+    const activities = await this.getActivities();
+    const newActivity = {
+      id: Date.now().toString(),
+      ...activityData,
+      createdAt: new Date().toISOString(),
+    };
+    activities.push(newActivity);
+    await AsyncStorage.setItem(this.activitiesKey, JSON.stringify(activities));
+    return newActivity;
+  }
+
+  async deleteActivity(activityId) {
+    let activities = await this.getActivities();
+    activities = activities.filter(act => act.id !== activityId);
+    await AsyncStorage.setItem(this.activitiesKey, JSON.stringify(activities));
+  }
+
+  async getStudentsForTeacher() {
+    const users = await this.getUsers();
+    return users.filter(user => user.role === 'student');
   }
 }
 
