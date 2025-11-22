@@ -9,4 +9,9 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('test')
+  getTest(): any {
+    return { message: 'Backend is working!', timestamp: new Date() };
+  }
 }

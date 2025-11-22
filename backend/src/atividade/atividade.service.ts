@@ -30,17 +30,28 @@ export class AtividadeService {
   }
 
   // Listar atividades com tratamento seguro de relações
-  async getAtividades(): Promise<Atividade[]> {
+  async getAtividades(professorId?: number, admin?: boolean): Promise<Atividade[]> {
     try {
-      const atividades = await this.atividadeRepository.find({
-        relations: ['professor', 'alunos'],
-      });
+      let atividades;
+      
+      if (admin) {
+        atividades = await this.atividadeRepository.find({
+          relations: ['professor', 'aluno'],
+        });
+      } else if (professorId) {
+        atividades = await this.atividadeRepository.find({
+          relations: ['professor', 'aluno'],
+          where: { professor: { id: professorId } },
+        });
+      } else {
+        atividades = [];
+      }
 
       // Garante que cada atividade tenha professor e alunos definidos
       return atividades.map((a) => ({
         ...a,
         professor: a.professor || null,
-        alunos: a.aluno || [],
+        aluno: a.aluno || [],
       }));
     } catch (err) {
       throw new HttpException(
@@ -55,7 +66,7 @@ export class AtividadeService {
     try {
       const atividade = await this.atividadeRepository.findOne({
         where: { id },
-        relations: ['professor', 'alunos'],
+        relations: ['professor', 'aluno'],
       });
 
       if (!atividade) {
@@ -78,7 +89,18 @@ export class AtividadeService {
 
   // Atualizar atividade
   async updateAtividade(id: number, dto: UpdateAtividadeDto): Promise<Atividade> {
-    await this.atividadeRepository.update(id, dto);
+    const updateData: any = {
+      titulo: dto.titulo,
+      descricao: dto.descricao,
+      data: dto.data,
+      hora: dto.hora,
+    };
+    
+    if (dto.professorId) {
+      updateData.professor = { id: dto.professorId };
+    }
+    
+    await this.atividadeRepository.update(id, updateData);
     return this.getAtividade(id);
   }
 
@@ -103,7 +125,7 @@ export class AtividadeService {
   async assignAluno(atividadeId: number, alunoId: number): Promise<Atividade> {
     const atividade = await this.atividadeRepository.findOne({
       where: { id: atividadeId },
-      relations: ['alunos'],
+      relations: ['aluno'],
     });
 
     if (!atividade) {
@@ -126,6 +148,24 @@ export class AtividadeService {
     if (!existe) {
       atividade.aluno.push(aluno);
     }
+
+    return this.atividadeRepository.save(atividade);
+  }
+
+  // Remover aluno da atividade
+  async removeAluno(atividadeId: number, alunoId: number): Promise<Atividade> {
+    const atividade = await this.atividadeRepository.findOne({
+      where: { id: atividadeId },
+      relations: ['aluno'],
+    });
+
+    if (!atividade) {
+      throw new HttpException('Atividade não encontrada', HttpStatus.NOT_FOUND);
+    }
+
+    if (!atividade.aluno) atividade.aluno = [];
+    
+    atividade.aluno = atividade.aluno.filter(a => a.id !== alunoId);
 
     return this.atividadeRepository.save(atividade);
   }

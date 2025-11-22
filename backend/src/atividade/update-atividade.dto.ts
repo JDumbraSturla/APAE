@@ -1,42 +1,23 @@
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  MinLength,
-  MaxLength,
-  Matches,
-  IsOptional,
-  IsEnum,
-  IsDateString,
-  IsBoolean,
-  IsNumber,
-} from 'class-validator';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class UpdateAtividadeDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @MinLength(3)
-  @MaxLength(100)
-  readonly titulo: string;
+  readonly titulo?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @MinLength(3)
-  @MaxLength(255)
-  readonly descricao: string;
+  readonly descricao?: string;
 
-  @IsDateString()
-  readonly data: string;
-
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  @MinLength(5)
-  @MaxLength(5)
-  readonly hora: string;
+  readonly data?: string;
 
-  @IsNotEmpty()
-  readonly professorID: number;
+  @IsOptional()
+  @IsString()
+  readonly hora?: string;
 
-  @IsNotEmpty()
-  readonly alunoID: number;
+  @IsOptional()
+  @IsNumber()
+  readonly professorId?: number;
 }

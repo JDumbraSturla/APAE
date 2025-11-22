@@ -48,6 +48,11 @@ export const dataService = {
     }
   },
 
+  // PEGAR USUÁRIO ATUAL
+  async getCurrentUser() {
+    return await this.getSavedUser();
+  },
+
   // DESLOGAR
   async logout() {
     await AsyncStorage.removeItem("professor_id");
@@ -61,24 +66,29 @@ export const dataService = {
       const professor = await this.getSavedUser();
       if (!professor) throw new Error("Usuário não autenticado");
 
-      const response = await api.get("/atividade");
+      console.log('Fetching atividades for professor:', professor.id);
+      const params = professor.admin ? { admin: true } : { professorId: professor.id };
+      console.log('Request params:', params);
+      const response = await api.get("/atividade", { params });
+      console.log('Atividades response:', response.data);
 
       // Garante que cada atividade tenha professor e alunos definidos
       const atividades = response.data.map(a => ({
         ...a,
         professor: a.professor || null,
-        alunos: a.alunos || [],
+        aluno: a.aluno || [], // Note: backend uses 'aluno', not 'alunos'
       }));
 
       return atividades;
     } catch (err) {
       console.error("Erro no dataService.getAtividades:", err);
+      console.error("Error details:", err.response?.data);
       throw err;
     }
   },
 
   // CRIAR ATIVIDADE
-  async registerAtividade({ titulo, descricao, data, hora }) {
+  async registerAtividade({ titulo, descricao, data, hora, professorId }) {
     try {
       const professor = await this.getSavedUser();
       if (!professor) throw new Error("Usuário não autenticado");
@@ -88,7 +98,7 @@ export const dataService = {
         descricao,
         data,
         hora,
-        professorId: professor.id, // importante enviar o professorId
+        professorId: professorId || professor.id,
       });
 
       return response.data;
@@ -108,6 +118,84 @@ export const dataService = {
       return response.data;
     } catch (err) {
       console.error("Erro no dataService.deleteAtividade:", err);
+      throw err;
+    }
+  },
+
+  // ATUALIZAR ATIVIDADE
+  async updateAtividade(id, { titulo, descricao, data, hora, professorId }) {
+    try {
+      const professor = await this.getSavedUser();
+      if (!professor) throw new Error("Usuário não autenticado");
+
+      const response = await api.patch(`/atividade/${id}`, {
+        titulo,
+        descricao,
+        data,
+        hora,
+        professorId,
+      });
+      return response.data;
+    } catch (err) {
+      console.error("Erro no dataService.updateAtividade:", err);
+      throw err;
+    }
+  },
+
+  // ASSOCIAR ALUNO À ATIVIDADE
+  async assignAlunoToAtividade(atividadeId, alunoId) {
+    try {
+      const professor = await this.getSavedUser();
+      if (!professor) throw new Error("Usuário não autenticado");
+
+      const response = await api.post(`/atividade/${atividadeId}/assign`, {
+        alunoId: alunoId,
+      });
+      return response.data;
+    } catch (err) {
+      console.error("Erro no dataService.assignAlunoToAtividade:", err);
+      throw err;
+    }
+  },
+
+  // REMOVER ALUNO DA ATIVIDADE
+  async removeAlunoFromAtividade(atividadeId, alunoId) {
+    try {
+      const professor = await this.getSavedUser();
+      if (!professor) throw new Error("Usuário não autenticado");
+
+      const response = await api.delete(`/atividade/${atividadeId}/assign/${alunoId}`);
+      return response.data;
+    } catch (err) {
+      console.error("Erro no dataService.removeAlunoFromAtividade:", err);
+      throw err;
+    }
+  },
+
+  // BUSCAR ALUNOS
+  async getAlunos() {
+    try {
+      const professor = await this.getSavedUser();
+      if (!professor) throw new Error("Usuário não autenticado");
+
+      const response = await api.get("/aluno");
+      return response.data;
+    } catch (err) {
+      console.error("Erro no dataService.getAlunos:", err);
+      throw err;
+    }
+  },
+
+  // BUSCAR PROFESSORES
+  async getProfessores() {
+    try {
+      const professor = await this.getSavedUser();
+      if (!professor) throw new Error("Usuário não autenticado");
+
+      const response = await api.get("/professor");
+      return response.data;
+    } catch (err) {
+      console.error("Erro no dataService.getProfessores:", err);
       throw err;
     }
   },

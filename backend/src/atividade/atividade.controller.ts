@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AtividadeService } from './atividade.service';
 import { UpdateAtividadeDto } from './update-atividade.dto';
 import { CreateAtividadeDto } from './create-atividade.dto';
@@ -16,8 +16,8 @@ export class AtividadeController {
 
   // Listar todas
   @Get()
-  getAtividades() {
-    return this.atividadeService.getAtividades();
+  getAtividades(@Query('professorId') professorId?: number, @Query('admin') admin?: boolean) {
+    return this.atividadeService.getAtividades(professorId, admin);
   }
 
   // Buscar uma atividade
@@ -45,5 +45,14 @@ export class AtividadeController {
     @Body() dto: AssignAlunoDto,
   ) {
     return this.atividadeService.assignAluno(atividadeId, dto.alunoId);
+  }
+
+  // Remover aluno da atividade
+  @Delete(':atividadeId/assign/:alunoId')
+  removeAluno(
+    @Param('atividadeId') atividadeId: number,
+    @Param('alunoId') alunoId: number,
+  ) {
+    return this.atividadeService.removeAluno(atividadeId, alunoId);
   }
 }
